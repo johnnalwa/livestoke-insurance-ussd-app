@@ -6,7 +6,7 @@ import base64
 import json
 from datetime import datetime
 import africastalking
-from .models import UserSession, CharityOrganization
+from .models import UserSession, LivestockRegistration, Claim, Payment, Service
 
 # Set up Africa's Talking credentials
 africastalking_username = "devjnalwa"
@@ -27,9 +27,6 @@ def get_user_session(session_id, phone_number):
             "name": None,
             "case_description": None,
             "payment_amount": None,
-            "donation_type": None,
-            "selected_charity": None,
-            "donation_method": None
         }
     return user_sessions[session_id]
 
@@ -47,8 +44,9 @@ def send_sms(phone_number, message):
             return f'Failed to send SMS. Status: {response["SMSMessageData"]["Recipients"][0]["status"]}'
     except Exception as e:
         return f'Error: {str(e)}'
-    
-def send_donation_stk_push(phone_number, amount):
+
+
+def send_stk_push(phone_number, amount):
     # Remove "+" sign from the phone number if present
     phone_number = phone_number.replace('+', '')
     
@@ -97,8 +95,8 @@ def send_donation_stk_push(phone_number, amount):
         'PartyB': BusinessShortCode,
         'PhoneNumber': phone_number,
         'CallBackURL': CallBackURL,
-        'AccountReference': 'donation ',
-        'TransactionDesc': ' donation'
+        'AccountReference': 'CHARITY Platform',
+        'TransactionDesc': 'charity'
     }
 
     response = requests.post(initiate_url, headers=headers, json=payload)
@@ -114,7 +112,7 @@ def send_donation_stk_push(phone_number, amount):
         success_message = response_data.get('ResponseDescription', 'Payment initiated successfully.')
         
         # After sending STK Push, send an SMS
-        sms_message_stk_push = "Your payment of {} KES has been received. Thank you!".format(amount)
+        sms_message_stk_push = "Thanks {} Your donation of {} KES has been received.".format(amount)
         sms_result_stk_push = send_sms(phone_number, sms_message_stk_push)
         
         # Additional message
@@ -127,8 +125,6 @@ def send_donation_stk_push(phone_number, amount):
         # Include phone number in error message
         error_message_with_phone = f'{error_message} Phone Number: {phone_number}'
         return error_message_with_phone
-
-
 @csrf_exempt
 def ussd_handler(request):
     if request.method == 'POST':
@@ -148,94 +144,123 @@ def ussd_handler(request):
             if not text.strip():
                 session.stage = "register_name"
                 session.save()
-                response = "CON Welcome to the Donation Platform\nEnter your full name to register:"
+                response = "CON Welcome to Charity Platform \nEnter your full name to register:"
             else:
                 response = "END Invalid option. Please try again."
         elif session.stage == "register_name":
             if text.strip():
                 session.name = user_response
-                session.stage = "donation_type"
+                session.stage = "main_menu"
                 session.save()
                 response = (
-                    "CON Hi {}, choose the type of donation you'd like to make:\n"
-                    "1. Charity for the Homeless\n"
-                    "2. Charity for the Poor\n"
-                    "3. Charity for the Disabled\n"
-                    "4. Charity for Famine Relief\n"
-                    "5. Other"
+                    "CON Hi {}, select type of charity you wish to take:\n"
+                    "1. donate for poor\n"
+                    "2. donate for disabled\n"
+                    "3. donate for famine relief\n"
+                    "4. donate for homeless\n"
+                    "5. about us"
                 ).format(user_response)
             else:
-                response = "END Please enter your full name to register."
-        elif session.stage == "donation_type":
+                response = "END Please enter your name to register."
+        elif session.stage == "main_menu":
             if user_response in ["1", "2", "3", "4", "5"]:
-                donation_types = {
-                    "1": "Charity for the Homeless",
-                    "2": "Charity for the Poor",
-                    "3": "Charity for the Disabled",
-                    "4": "Charity for Famine Relief",
-                    "5": "Other"
-                }
-                donation_type = donation_types[user_response]
-                session.donation_type = donation_type
-                session.stage = "charity_organization"
-                session.save()
-                
-                # Fetch and display related charity organizations
-                charity_organizations = CharityOrganization.objects.filter(donation_type=donation_type)
-                response = "CON Choose a charity organization:\n"
-                for i, charity in enumerate(charity_organizations, start=1):
-                    response += f"{i}. {charity.name}\n"
+                if user_response == "1":
+                    if LivestockRegistration.objects.filter(session=session).exists():
+                        response = "CON Choose an option:\n1. View Registered Livestock\n2. Register a New Livestock\n3. Return to Main Menu"
+                    else:
+                        session.stage = "register_location_name"
+                        session.save()
+                        response = "CON Register a new livestock...\nEnter your location and livestock name separated by comma (e.g., Location, Livestock Name):"
+                elif user_response == "2":
+                    session.stage = "report_case"
+                    session.save()
+                    response = "CON Report your case...\nEnter a brief description of your case:"
+                elif user_response == "3":
+                    session.stage = "claim"
+                    session.save()
+                    response = "CON Enter your claim description:"
+                elif user_response == "4":
+                    session.stage = "choose_charity"
+                    session.save()
+                    response = (
+                        "CON Select charity for the homeless:\n"
+                        "1. Red Cross\n"
+                        "2. Habitat for Humanity"
+                    )
+                elif user_response == "5":
+                    session.stage = "services"
+                    session.save()
+                    response = "CON Choose a service..."
             else:
                 response = "END Invalid option. Please try again."
-
-        elif session.stage == "charity_organization":
-            # Assuming user_response is the index of the selected charity organization
-            try:
-                selected_charity_index = int(user_response)
-                charity_organizations = CharityOrganization.objects.filter(donation_type=session.donation_type)
-                selected_charity = charity_organizations[selected_charity_index - 1]
-
-                session.selected_charity = selected_charity
-                session.stage = "donation_method"
+        elif session.stage == "choose_charity":
+            if user_response in ["1", "2"]:
+                if user_response == "1":
+                    charity = "Red Cross"
+                else:
+                    charity = "Habitat for Humanity"
+                session.charity = charity
+                session.stage = "payment_amount"
                 session.save()
-                response = "CON Choose a donation method:\n1. Cash Donation\n2. Physical Item Donation"
-            except (ValueError, IndexError):
-                response = "END Invalid option. Please try again."
-
-        elif session.stage == "donation_method":
-            if user_response == "1":
-                session.donation_method = "Cash"
-                session.stage = "enter_amount"
-                session.save()
-                response = "CON Enter the donation amount:"
-            elif user_response == "2":
-                session.donation_method = "Physical Item"
-                # Add logic for handling physical item donation
-                # (e.g., providing drop-off locations or scheduling pick-up)
-                session.stage = "thank_you"
-                session.save()
-                response = "END Thank you for your physical item donation!"
+                response = "CON You have selected {}. Enter the amount you wish to donate:".format(charity)
             else:
-                response = "END Invalid option. Please try again."
-
-        elif session.stage == "enter_amount":
+                response = "END Invalid option. Please choose a charity."
+        elif session.stage == "payment_amount":
             user_response = user_response.strip()
             if user_response.isdigit():
                 try:
-                    donation_amount = int(user_response)
-                    # Simulate donation processing and generate STK push
-                    send_donation_stk_push(session.phone_number, donation_amount, session.selected_charity.name)
-                    session.stage = "thank_you"
-                    session.save()
-                    response = "END Thank you for your donation of {} KES.".format(donation_amount)
+                    payment_amount = int(user_response)
+                    Payment.objects.create(session=session, amount=payment_amount)
+                    # Simulate payment processing and generate STK push
+                    stk_push_result = send_stk_push(session.phone_number, payment_amount)
+                    response = "END Donation of {} KES initiated successfully.".format(payment_amount)
                 except Exception as e:
                     response = "END Error: {}".format(e)
             else:
-                response = "END Invalid amount. Please enter a valid numeric amount."
-
-        elif session.stage == "thank_you":
-            response = "END Thank you for your donation!"
-
+                response = "END Invalid amount. Please enter a valid numeric amount. Text received: '{}'".format(user_response)
+        elif session.stage == "services":
+            # Handle services logic
+            # For example:
+            Service.objects.create(session=session)
+            session.stage = "main_menu"
+            session.save()
+            response = "CON Service chosen. Thank you!"
+        elif session.stage == "report_case":
+            if text.strip():
+                Claim.objects.create(session=session, description=text)
+                session.stage = "main_menu"
+                session.save()
+                response = "CON Case reported successfully. Thank you!\n1. Return to Main Menu"
+            else:
+                response = "END Please enter a brief description of your case."
+        elif session.stage == "register_location_name":
+            if text.strip():
+                location, livestock_name = map(str.strip, text.split(','))
+                LivestockRegistration.objects.create(session=session, location=location, livestock_name=livestock_name)
+                session.stage = "choose_package"
+                session.save()
+                response = (
+                    "CON Location and Livestock name registered successfully.\n"
+                    "Choose a package:\n"
+                    "1. Basic Insurance\n"
+                    "2. Standard Insurance\n"
+                    "3. Premium Insurance"
+                )
+            else:
+                response = "END Please enter your location and livestock name separated by comma."
+        elif session.stage == "choose_package":
+            if user_response in ["1", "2", "3"]:
+                package = {
+                    "1": "Basic Insurance",
+                    "2": "Standard Insurance",
+                    "3": "Premium Insurance"
+                }[user_response]
+                session.package = package
+                # Additional logic like calculating premiums, etc. can go here
+                session.save()
+                response = "END {} package selected. Thank you.".format(package)
+            else:
+                response = "END Invalid option. Please choose a package from the provided options."
         else:
             response = "END An error occurred. Please try again."
 
