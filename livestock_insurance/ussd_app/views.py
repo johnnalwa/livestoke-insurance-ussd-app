@@ -2,11 +2,15 @@ import requests
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from urllib.parse import parse_qs
+from django.shortcuts import render, redirect
 import base64
 import json
 from datetime import datetime
 import africastalking
 from .models import UserSession, LivestockRegistration, Claim, Payment, Service
+import logging
+
+logging.basicConfig(level=logging.ERROR)
 
 # Set up Africa's Talking credentials
 africastalking_username = "devjnalwa"
@@ -109,7 +113,7 @@ def send_stk_push(phone_number, amount):
         response_data = {"errorMessage": "Invalid JSON response from API"}
 
     if response.status_code == 200:
-        success_message = response_data.get('ResponseDescription', 'Payment initiated successfully.')
+        success_message = response_data.get('ResponseDescription', 'Donation has been initiated successfully.')
         
         # After sending STK Push, send an SMS
         sms_message_stk_push = "Thanks {} Your donation of {} KES has been received.".format(amount)
@@ -125,6 +129,9 @@ def send_stk_push(phone_number, amount):
         # Include phone number in error message
         error_message_with_phone = f'{error_message} Phone Number: {phone_number}'
         return error_message_with_phone
+    
+
+
 @csrf_exempt
 def ussd_handler(request):
     if request.method == 'POST':
@@ -140,130 +147,140 @@ def ussd_handler(request):
         text_array = text.split('*')
         user_response = text_array[-1]
 
-        if session.stage == "welcome":
-            if not text.strip():
-                session.stage = "register_name"
-                session.save()
-                response = "CON Welcome to Charity Platform \nEnter your full name to register:"
-            else:
-                response = "END Invalid option. Please try again."
-        elif session.stage == "register_name":
-            if text.strip():
-                session.name = user_response
-                session.stage = "main_menu"
-                session.save()
-                response = (
-                    "CON Hi {}, select type of charity you wish to take:\n"
-                    "1. donate for poor\n"
-                    "2. donate for disabled\n"
-                    "3. donate for famine relief\n"
-                    "4. donate for homeless\n"
-                    "5. about us"
-                ).format(user_response)
-            else:
-                response = "END Please enter your name to register."
-        elif session.stage == "main_menu":
-            if user_response in ["1", "2", "3", "4", "5"]:
-                if user_response == "1":
-                    if LivestockRegistration.objects.filter(session=session).exists():
-                        response = "CON Choose an option:\n1. View Registered Livestock\n2. Register a New Livestock\n3. Return to Main Menu"
-                    else:
-                        session.stage = "register_location_name"
-                        session.save()
-                        response = "CON Register a new livestock...\nEnter your location and livestock name separated by comma (e.g., Location, Livestock Name):"
-                elif user_response == "2":
-                    session.stage = "report_case"
+        try:
+            if session.stage == "welcome":
+                if not text.strip():
+                    session.stage = "register_name"
                     session.save()
-                    response = "CON Report your case...\nEnter a brief description of your case:"
-                elif user_response == "3":
-                    session.stage = "claim"
-                    session.save()
-                    response = "CON Enter your claim description:"
-                elif user_response == "4":
-                    session.stage = "choose_charity"
+                    response = "CON Welcome to Charity Platform \nEnter your full name to register:"
+                else:
+                    response = "END Invalid option. Please try again."
+            elif session.stage == "register_name":
+                if text.strip():
+                    session.name = user_response
+                    session.stage = "main_menu"
                     session.save()
                     response = (
-                        "CON Select charity for the homeless:\n"
-                        "1. Red Cross\n"
-                        "2. Habitat for Humanity"
-                    )
-                elif user_response == "5":
-                    session.stage = "services"
-                    session.save()
-                    response = "CON Choose a service..."
-            else:
-                response = "END Invalid option. Please try again."
-        elif session.stage == "choose_charity":
-            if user_response in ["1", "2"]:
-                if user_response == "1":
-                    charity = "Red Cross"
+                        "CON Hi {}, select type of charity you wish to donate to:\n"
+                        "1. Charity for the Poor\n"
+                        "2. Charity for the Disabled\n"
+                        "3. Charity for Famine Relief\n"
+                        "4. Charity for the Homeless\n"
+                        "5. About Us"
+                    ).format(user_response)
                 else:
-                    charity = "Habitat for Humanity"
-                session.charity = charity
-                session.stage = "payment_amount"
-                session.save()
-                response = "CON You have selected {}. Enter the amount you wish to donate:".format(charity)
+                    response = "END Please enter your name to register."
+            elif session.stage == "main_menu":
+                if user_response in ["1", "2", "3", "4", "5"]:
+                    if user_response == "1":
+                        session.stage = "choose_charity"
+                        session.save()
+                        response = (
+                            "CON Select charity for the Poor:\n"
+                            "1. Oxfam\n"
+                            "2. World Vision\n"
+                            "3. Save the Children"
+                        )
+                    elif user_response == "2":
+                        session.stage = "choose_charity"
+                        session.save()
+                        response = (
+                            "CON Select charity for the Disabled:\n"
+                            "1. Special Olympics\n"
+                            "2. Disabled American Veterans\n"
+                            "3. Ability First"
+                        )
+                    elif user_response == "3":
+                        session.stage = "choose_charity"
+                        session.save()
+                        response = (
+                            "CON Select charity for Famine Relief:\n"
+                            "1. UNICEF\n"
+                            "2. World Food Programme\n"
+                            "3. Action Against Hunger"
+                        )
+                    elif user_response == "4":
+                        session.stage = "choose_charity"
+                        session.save()
+                        response = (
+                            "CON Select charity for the Homeless:\n"
+                            "1. Red Cross\n"
+                            "2. Habitat for Humanity"
+                        )
+                    elif user_response == "5":
+                        session.stage = "about_us"
+                        session.save()
+                        response = "END Charity Platform provides support to various charitable causes. Thank you for your interest!"
+                else:
+                    response = "END Invalid option. Please try again."
+            elif session.stage == "choose_charity":
+                if user_response in ["1", "2", "3"]:
+                    if user_response == "1":
+                        charity = "Oxfam"
+                    elif user_response == "2":
+                        charity = "World Vision"
+                    else:
+                        charity = "Save the Children"
+                    session.charity = charity
+                    session.stage = "donation_method"
+                    session.save()
+                    response = "CON You have selected {}. Enter the donation method:\n1. Cash Donation\n2. Physical Item Donation".format(charity)
+                else:
+                    response = "END Invalid option. Please choose a charity."
+            elif session.stage == "donation_method":
+                if user_response == "1":
+                    session.donation_method = "Cash"
+                    session.stage = "enter_amount"
+                    session.save()
+                    response = "CON Enter the donation amount in KES:"
+                elif user_response == "2":
+                    session.donation_method = "Physical Item"
+                    session.stage = "physical_item_details"
+                    session.save()
+                    response = "CON Please provide details about the physical item you wish to donate:"
+                else:
+                    response = "END Invalid option. Please try again."
+            elif session.stage == "enter_amount":
+                user_response = user_response.strip()
+                if user_response.isdigit():
+                    try:
+                        donation_amount = int(user_response)
+                        session.donation_amount = donation_amount
+                        # Process donation (simulate for now)
+                        process_donation(session)
+                        response = "END Thank you for your donation of {} KES to {}.".format(donation_amount, session.charity)
+                    except Exception as e:
+                        logging.error("Error processing donation: %s", e)
+                        response = "END An error occurred processing your donation. Please try again later."
+                else:
+                    response = "END Invalid amount. Please enter a valid numeric amount."
+            elif session.stage == "physical_item_details":
+                # Process physical item donation (simulate for now)
+                process_physical_item_donation(session, user_response)
+                response = "END Thank you for your physical item donation to {}.".format(session.charity)
             else:
-                response = "END Invalid option. Please choose a charity."
-        elif session.stage == "payment_amount":
-            user_response = user_response.strip()
-            if user_response.isdigit():
-                try:
-                    payment_amount = int(user_response)
-                    Payment.objects.create(session=session, amount=payment_amount)
-                    # Simulate payment processing and generate STK push
-                    stk_push_result = send_stk_push(session.phone_number, payment_amount)
-                    response = "END Donation of {} KES initiated successfully.".format(payment_amount)
-                except Exception as e:
-                    response = "END Error: {}".format(e)
-            else:
-                response = "END Invalid amount. Please enter a valid numeric amount. Text received: '{}'".format(user_response)
-        elif session.stage == "services":
-            # Handle services logic
-            # For example:
-            Service.objects.create(session=session)
-            session.stage = "main_menu"
-            session.save()
-            response = "CON Service chosen. Thank you!"
-        elif session.stage == "report_case":
-            if text.strip():
-                Claim.objects.create(session=session, description=text)
-                session.stage = "main_menu"
-                session.save()
-                response = "CON Case reported successfully. Thank you!\n1. Return to Main Menu"
-            else:
-                response = "END Please enter a brief description of your case."
-        elif session.stage == "register_location_name":
-            if text.strip():
-                location, livestock_name = map(str.strip, text.split(','))
-                LivestockRegistration.objects.create(session=session, location=location, livestock_name=livestock_name)
-                session.stage = "choose_package"
-                session.save()
-                response = (
-                    "CON Location and Livestock name registered successfully.\n"
-                    "Choose a package:\n"
-                    "1. Basic Insurance\n"
-                    "2. Standard Insurance\n"
-                    "3. Premium Insurance"
-                )
-            else:
-                response = "END Please enter your location and livestock name separated by comma."
-        elif session.stage == "choose_package":
-            if user_response in ["1", "2", "3"]:
-                package = {
-                    "1": "Basic Insurance",
-                    "2": "Standard Insurance",
-                    "3": "Premium Insurance"
-                }[user_response]
-                session.package = package
-                # Additional logic like calculating premiums, etc. can go here
-                session.save()
-                response = "END {} package selected. Thank you.".format(package)
-            else:
-                response = "END Invalid option. Please choose a package from the provided options."
-        else:
-            response = "END An error occurred. Please try again."
+                response = "END An error occurred. Please try again."
+
+        except Exception as e:
+            logging.error("An error occurred: %s", e)
+            response = "END An unexpected error occurred. Please try again later."
 
         return HttpResponse(response, content_type="text/plain")
     else:
         return HttpResponse("Method Not Allowed", status=405)
+
+def process_donation(session):
+    send_stk_push()
+    logging.info("Donation processed successfully.")
+
+def process_physical_item_donation(session, item_details):
+    """
+    Placeholder function to simulate physical item donation processing.
+    In a real implementation, this function would handle the actual physical item donation processing logic.
+    """
+    logging.info("Physical item donation processed successfully.")
+
+
+    
+def dashboard(request):
+    return render(request, 'dashboard.html')
