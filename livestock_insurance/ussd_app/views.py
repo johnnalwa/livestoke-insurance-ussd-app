@@ -270,7 +270,9 @@ def ussd_handler(request):
         return HttpResponse("Method Not Allowed", status=405)
 
 def process_donation(session):
-    send_stk_push()
+    phone_number = session.phone_number
+    amount = session.donation_amount
+    send_stk_push(phone_number, amount)
     logging.info("Donation processed successfully.")
 
 def process_physical_item_donation(session, item_details):
