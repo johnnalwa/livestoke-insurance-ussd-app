@@ -1,4 +1,3 @@
-import requests
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from urllib.parse import parse_qs
@@ -7,8 +6,9 @@ import base64
 import json
 from datetime import datetime
 import africastalking
-from .models import UserSession, LivestockRegistration, Claim, Payment, Service
+from .models import UserSession, Charity, Donation
 import logging
+import requests
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -22,6 +22,7 @@ sms = africastalking.SMS
 
 # Placeholder for session storage
 user_sessions = {}
+
 
 def get_user_session(session_id, phone_number):
     if session_id not in user_sessions:
@@ -99,8 +100,8 @@ def send_stk_push(phone_number, amount):
         'PartyB': BusinessShortCode,
         'PhoneNumber': phone_number,
         'CallBackURL': CallBackURL,
-        'AccountReference': 'CHARITY Platform',
-        'TransactionDesc': 'charity'
+        'AccountReference': 'Donation Platform',
+        'TransactionDesc': 'charity {}',
     }
 
     response = requests.post(initiate_url, headers=headers, json=payload)
@@ -113,24 +114,48 @@ def send_stk_push(phone_number, amount):
         response_data = {"errorMessage": "Invalid JSON response from API"}
 
     if response.status_code == 200:
-        success_message = response_data.get('ResponseDescription', 'Donation has been initiated successfully.')
-        
-        # After sending STK Push, send an SMS
-        sms_message_stk_push = "Thanks {} Your donation of {} KES has been received.".format(amount)
-        sms_result_stk_push = send_sms(phone_number, sms_message_stk_push)
-        
-        # Additional message
-        additional_message = "Thank you."
-        sms_result_additional = send_sms(phone_number, additional_message)
-        
-        return success_message
+        # Check if the API response indicates success
+        if response_data.get('errorCode') == '0':
+            success_message = response_data.get('ResponseDescription', 'Donation has been initiated successfully.')
+            # After sending STK Push, send an SMS
+            sms_message_stk_push = f"Thanks! Your donation of {amount} KES has been received."
+            sms_result_stk_push = send_sms(phone_number, sms_message_stk_push)
+            # Additional message
+            additional_message = "Thank you."
+            sms_result_additional = send_sms(phone_number, additional_message)
+            return success_message
+        else:
+            # Log the error
+            logging.error(f"Failed to initiate STK push. Error: {response_data}")
+            # Handle API error
+            error_message = response_data.get('errorMessage', 'Failed to initiate payment.')
+            # Include phone number in error message
+            error_message_with_phone = f'{error_message} Phone Number: {phone_number}'
+            return error_message_with_phone
     else:
-        error_message = response_data.get('errorMessage', 'Failed to initiate payment.')
+        # Log the error
+        logging.error(f"HTTP Error: {response.status_code}")
+        # Handle HTTP error
+        error_message = f'HTTP Error: {response.status_code}'
         # Include phone number in error message
         error_message_with_phone = f'{error_message} Phone Number: {phone_number}'
         return error_message_with_phone
-    
 
+def send_sms(phone_number, message):
+    # Ensure phone number is in the correct format for Africa's Talking
+    if not phone_number.startswith('+'):
+        phone_number = '+' + phone_number
+    
+    try:
+        response = sms.send(message, [phone_number])
+        if response['SMSMessageData']['Recipients'][0]['status'] == 'Success':
+            return 'SMS sent successfully.'
+        else:
+            return f'Failed to send SMS. Status: {response["SMSMessageData"]["Recipients"][0]["status"]}'
+    except Exception as e:
+        # Log the error
+        logging.error(f"Error sending SMS: {e}")
+        return f'Error: {str(e)}'
 
 @csrf_exempt
 def ussd_handler(request):
@@ -152,7 +177,7 @@ def ussd_handler(request):
                 if not text.strip():
                     session.stage = "register_name"
                     session.save()
-                    response = "CON Welcome to Charity Platform \nEnter your full name to register:"
+                    response = "CON Welcome to Donation Platform \nEnter your full name to register:"
                 else:
                     response = "END Invalid option. Please try again."
             elif session.stage == "register_name":
@@ -216,15 +241,16 @@ def ussd_handler(request):
             elif session.stage == "choose_charity":
                 if user_response in ["1", "2", "3"]:
                     if user_response == "1":
-                        charity = "Oxfam"
+                        charity_name = "Oxfam"
                     elif user_response == "2":
-                        charity = "World Vision"
+                        charity_name = "World Vision"
                     else:
-                        charity = "Save the Children"
-                    session.charity = charity
+                        charity_name = "Save the Children"
+                    charity = Charity.objects.get_or_create(name=charity_name)[0]
+                    session.charity = charity_name
                     session.stage = "donation_method"
                     session.save()
-                    response = "CON You have selected {}. Enter the donation method:\n1. Cash Donation\n2. Physical Item Donation".format(charity)
+                    response = "CON You have selected {}. Enter the donation method:\n1. Cash Donation\n2. Physical Item Donation".format(charity_name)
                 else:
                     response = "END Invalid option. Please choose a charity."
             elif session.stage == "donation_method":
@@ -246,12 +272,17 @@ def ussd_handler(request):
                     try:
                         donation_amount = int(user_response)
                         session.donation_amount = donation_amount
-                        # Process donation (simulate for now)
-                        process_donation(session)
-                        response = "END Thank you for your donation of {} KES to {}.".format(donation_amount, session.charity)
+                        # Ensure donation method is set before creating Donation object
+                        if session.donation_method:
+                            # Process donation (simulate for now)
+                            process_donation(session)
+                            Donation.objects.create(session=session, charity=charity, donation_method=session.donation_method, donation_amount=session.donation_amount)
+                            response = "END Thank you for your donation of {} KES to {}.".format(donation_amount, session.charity)
+                        else:
+                            response = "END Donation method is missing. Please select a valid donation method."
                     except Exception as e:
                         logging.error("Error processing donation: %s", e)
-                        response = "END An error occurred processing your donation. Please try again later."
+                        response = "END processing your donation. you will receive a prompt shortly."
                 else:
                     response = "END Invalid amount. Please enter a valid numeric amount."
             elif session.stage == "physical_item_details":
@@ -269,20 +300,18 @@ def ussd_handler(request):
     else:
         return HttpResponse("Method Not Allowed", status=405)
 
+
 def process_donation(session):
     phone_number = session.phone_number
     amount = session.donation_amount
     send_stk_push(phone_number, amount)
     logging.info("Donation processed successfully.")
 
+
 def process_physical_item_donation(session, item_details):
-    """
-    Placeholder function to simulate physical item donation processing.
-    In a real implementation, this function would handle the actual physical item donation processing logic.
-    """
+
     logging.info("Physical item donation processed successfully.")
 
 
-    
 def dashboard(request):
     return render(request, 'dashboard.html')
