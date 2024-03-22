@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-wf=k@!3+=lhp3&0&55bnv$ldid$0scm1g!525quu=nw=484=ec
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    'f4a3-197-248-229-71.ngrok-free.app',
+    '2efe-102-215-12-244.ngrok-free.app',
     '127.0.0.1'
 ]
 
@@ -135,3 +135,9 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CORS_ALLOW_CREDENTIALS = False
+CORS_ALLOW_HEADERS = ["*"]
+# CSRF_TRUSTED_ORIGINS
+CORS_ORIGIN_WHITELIST=['https://2efe-102-215-12-244.ngrok-free.app','http://127.0.0.1:3000','http://127.0.0.1','http://164.92.88.33','http://164.92.88.33']
+CSRF_TRUSTED_ORIGINS=['https://2efe-102-215-12-244.ngrok-free.app','http://127.0.0.1:3000','http://127.0.0.1','http://164.92.88.33','http://164.92.88.33']
