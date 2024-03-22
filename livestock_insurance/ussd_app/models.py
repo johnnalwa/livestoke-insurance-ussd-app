@@ -1,58 +1,25 @@
 from django.db import models
-from datetime import datetime
+from django.utils import timezone
 
+created_at = timezone.now()
 class UserSession(models.Model):
-    session_id = models.CharField(max_length=100, unique=True)
+    session_id = models.CharField(max_length=255, unique=True)
     phone_number = models.CharField(max_length=20)
-    stage = models.CharField(max_length=100)
+    stage = models.CharField(max_length=50)
     name = models.CharField(max_length=255, null=True, blank=True)
-    location = models.CharField(max_length=255, null=True, blank=True)
-    livestock_name = models.CharField(max_length=255, null=True, blank=True)
-    package = models.CharField(max_length=50, null=True, blank=True)
-    case_description = models.TextField(null=True, blank=True)
-    payment_amount = models.IntegerField(null=True, blank=True)
+    charity = models.CharField(max_length=255, null=True, blank=True)
+    donation_method = models.CharField(max_length=20, null=True, blank=True)
+    donation_amount = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"Session: {self.session_id}, Phone: {self.phone_number}, Stage: {self.stage}"
-
-class LivestockRegistration(models.Model):
-    session = models.ForeignKey(UserSession, on_delete=models.CASCADE)
-    location = models.CharField(max_length=255)
-    livestock_name = models.CharField(max_length=255)
-
-    def __str__(self):
-        return f"Location: {self.location}, Livestock Name: {self.livestock_name}"
-
-class Claim(models.Model):
-    session = models.ForeignKey(UserSession, on_delete=models.CASCADE)
-    description = models.TextField()
-
-    def __str__(self):
-        return f"Claim for session: {self.session_id}"
-
-class Payment(models.Model):
-    session = models.ForeignKey(UserSession, on_delete=models.CASCADE)
-    amount = models.IntegerField()
-
-    def __str__(self):
-        return f"Payment for session: {self.session_id}, Amount: {self.amount}"
-
-class Service(models.Model):
-    session = models.ForeignKey(UserSession, on_delete=models.CASCADE)
-    # Add fields specific to the service
-
-    def __str__(self):
-        return f"Service for session: {self.session_id}"
-
-class LivestockInsurance(models.Model):
-    user_phone_number = models.CharField(max_length=20)
+class Charity(models.Model):
     name = models.CharField(max_length=255)
-    location = models.CharField(max_length=255)
-    livestock_name = models.CharField(max_length=255)
-    package = models.CharField(max_length=50)
-    case_description = models.TextField(blank=True, null=True)
-    payment_amount = models.IntegerField(blank=True, null=True)
-    registered_at = models.DateTimeField(default=datetime.now)
 
-    def __str__(self):
-        return f"{self.name}'s Livestock ({self.livestock_name})"
+class Donation(models.Model):
+    session = models.ForeignKey(UserSession, on_delete=models.CASCADE)
+    charity = models.ForeignKey(Charity, on_delete=models.CASCADE)
+    donation_method = models.CharField(max_length=20)
+    donation_amount = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
