@@ -1,49 +1,155 @@
+
+
 {% extends 'base.html' %}
 {% load static %}
 
 {% block content %}
+<div class="content">
+    <!-- Animated -->
+    <div class="animated fadeIn">
+        <!-- Widgets  -->
+        <div class="row">
+            <div class="col-lg-3 col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="stat-widget-five">
+                            <div class="stat-icon dib flat-color-1">
+                                <i class="fa fa-users"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="text-left dib">
+                                    <div class="stat-text"><span class="count">{{ total_users|default:"0" }}</span></div>
+                                    <div class="stat-heading">Population</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-    <!-- Charity Statistics Start -->
-<div class="container-fluid pt-4 px-4">
-    <div class="row g-4">
-        <div class="col-sm-6 col-xl-3">
-            <div class="bg-light rounded d-flex align-items-center justify-content-between p-4">
-                <i class="fa fa-hand-holding-heart fa-3x text-primary"></i>
-                <div class="ms-3">
-                    <p class="mb-2">Total Donations</p>
-                    <h6 class="mb-0">KES 250,000</h6>
+            <div class="col-lg-3 col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="stat-widget-five">
+                            <div class="stat-icon dib flat-color-2">
+                                <i class="fa fa-female"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="text-left dib">
+                                    <div class="stat-text"><span class="count">{{ female_users|default:"0" }}</span></div>
+                                    <div class="stat-heading">Total Females</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="stat-widget-five">
+                            <div class="stat-icon dib flat-color-3">
+                                <i class="fa fa-male"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="text-left dib">
+                                    <div class="stat-text"><span class="count">{{ male_users|default:"0" }}</span></div>
+                                    <div class="stat-heading">Total Males</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="stat-widget-five">
+                            <div class="stat-icon dib flat-color-4">
+                                <i class="fa fa-line-chart"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="text-left dib">
+                                    <div class="stat-text"><span class="count">2986</span></div>
+                                    <div class="stat-heading">Population Growth</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="bg-light rounded d-flex align-items-center justify-content-between p-4">
-                <i class="fa fa-users fa-3x text-primary"></i>
-                <div class="ms-3">
-                    <p class="mb-2">Beneficiaries Helped</p>
-                    <h6 class="mb-0">10,000</h6>
-                </div>
+    </div> <!-- /Widgets -->
+
+   <!-- Traffic  -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="box-title">Gender Distribution</h4>
             </div>
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card-body">
+                        <canvas id="genderChart"></canvas>
+                    </div>
+                </div>
+            </div> <!-- /.row -->
+            <div class="card-body"></div>
         </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="bg-light rounded d-flex align-items-center justify-content-between p-4">
-                <i class="fa fa-globe-americas fa-3x text-primary"></i>
-                <div class="ms-3">
-                    <p class="mb-2">Countries Served</p>
-                    <h6 class="mb-0">25</h6>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-3">
-            <div class="bg-light rounded d-flex align-items-center justify-content-between p-4">
-                <i class="fa fa-handshake fa-3x text-primary"></i>
-                <div class="ms-3">
-                    <p class="mb-2">Partnerships</p>
-                    <h6 class="mb-0">75</h6>
-                </div>
-            </div>
+    </div><!-- /# column -->
+</div>
+<!--  /Traffic -->
+<!-- Bar chart for monthly user distribution -->
+<div class="col-lg-6">
+    <div class="card">
+        <div class="card-body">
+            <h4 class="mb-3">Monthly User Distribution</h4>
+            <canvas id="barChart"></canvas>
         </div>
     </div>
+</div><!-- /# column -->
+
 </div>
-<!-- Charity Statistics End -->
+
+
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var ctx = document.getElementById('genderChart').getContext('2d');
+        var genderChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [{% for date, _ in male_users_data.items %}'{{ date }}',{% endfor %}],
+                datasets: [{
+                    label: 'Males',
+                    data: [{% for _, count in male_users_data.items %}{{ count }},{% endfor %}],
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)', // Blue color for males
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },{
+                    label: 'Females',
+                    data: [{% for _, count in female_users_data.items %}{{ count }},{% endfor %}],
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)', // Red color for females
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }]
+                }
+            }
+        });
+    });
+
+</script>
+
 
 {% endblock %}

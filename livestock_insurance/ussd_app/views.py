@@ -1,9 +1,13 @@
 from django.http import HttpResponse
+from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from .models import UserDetail, UserSession
 import africastalking
 import logging
 from django.utils import timezone
+from django.db.models import Count
+from datetime import datetime, timedelta
+
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -51,6 +55,8 @@ def send_sms(phone_number, message):
 
 @csrf_exempt
 def ussd_handler(request):
+    response = ""  # Initialize response variable
+
     if request.method == 'POST':
         session_id = request.POST.get('sessionId', None)
         phone_number = request.POST.get('phoneNumber', None)
@@ -132,4 +138,48 @@ def ussd_handler(request):
         except Exception as e:
             response = "END An error occurred. Please try again later."
 
-        return HttpResponse(response)
+    return HttpResponse(response if response else "END Unknown error occurred.")
+
+
+
+
+def dashboard(request):
+    # Retrieve the count of all users
+    total_users = UserDetail.objects.count()
+    
+    # Retrieve the count of male users
+    male_users = UserDetail.objects.filter(gender='M').count()
+    
+    # Retrieve the count of female users
+    female_users = UserDetail.objects.filter(gender='F').count()
+
+    # Calculate daily counts of male and female users for the last 7 days
+    today = datetime.now().date()
+    last_week = today - timedelta(days=6)
+
+        # Query to get daily counts of male users
+    male_users_daily = UserDetail.objects.filter(gender='M', registration_date__range=(last_week, today)) \
+                        .values('registration_date') \
+                        .annotate(count=Count('pk'))
+
+    # Query to get daily counts of female users
+    female_users_daily = UserDetail.objects.filter(gender='F', registration_date__range=(last_week, today)) \
+                        .values('registration_date') \
+                        .annotate(count=Count('pk'))
+
+
+    # Create dictionaries to store daily counts
+    male_users_data = {entry['registration_date']: entry['count'] for entry in male_users_daily}
+    female_users_data = {entry['registration_date']: entry['count'] for entry in female_users_daily}
+
+    # Add any other necessary context data here
+    context = {
+        'total_users': total_users,
+        'male_users': male_users,
+        'female_users': female_users,
+        'male_users_data': male_users_data,
+        'female_users_data': female_users_data,
+        # Add more context data if needed
+    }
+    
+    return render(request, 'dashboard.html', context)
