@@ -12,8 +12,8 @@ from datetime import datetime, timedelta
 logging.basicConfig(level=logging.ERROR)
 
 # Set up Africa's Talking credentials
-africastalking_username = "sidanApp"
-africastalking_api_key = "4517d7cc71f90c18e234da01ecea9314c38830eed5d6a465f2de43012a914e2c"
+africastalking_username = "johnness"
+africastalking_api_key = "3d0728b076131e515d0acbbc039beb5f69d6d5378cfe29c55241ac7d2cb52617"
 
 # Initialize Africa's Talking SMS
 africastalking.initialize(africastalking_username, africastalking_api_key)
@@ -129,7 +129,7 @@ def ussd_handler(request):
                         if send_sms(session.phone_number, sms_message):
                             response = "END Registration successful. Thank you! You will receive a confirmation SMS shortly."
                         else:
-                            response = "END Failed to send confirmation SMS. Please contact support for assistance."
+                            response = "END Failed to send confirmation SMS. insufficient balance!!."
                     else:
                         response = "END Invalid age. Please enter a valid age."
                 except ValueError:
@@ -144,9 +144,27 @@ def ussd_handler(request):
 
 
 def dashboard(request):
+
     # Retrieve the count of all users
     total_users = UserDetail.objects.count()
-    
+
+
+    # Get counts of users in each age group
+    below_18_count = UserDetail.objects.filter(age__lt=18).count()
+    age_18_35_count = UserDetail.objects.filter(age__range=[18, 35]).count()
+    age_36_45_count = UserDetail.objects.filter(age__range=[36, 45]).count()
+    age_46_65_count = UserDetail.objects.filter(age__range=[46, 65]).count()
+    above_65_count = UserDetail.objects.filter(age__gt=65).count()
+
+    # Calculate percentages
+    total_users = UserDetail.objects.count()
+    below_18_percentage = (below_18_count / total_users) * 100 if total_users > 0 else 0
+    age_18_35_percentage = (age_18_35_count / total_users) * 100 if total_users > 0 else 0
+    age_36_45_percentage = (age_36_45_count / total_users) * 100 if total_users > 0 else 0
+    age_46_65_percentage = (age_46_65_count / total_users) * 100 if total_users > 0 else 0
+    above_65_percentage = (above_65_count / total_users) * 100 if total_users > 0 else 0
+
+
     # Retrieve the count of male users
     male_users = UserDetail.objects.filter(gender='M').count()
     
@@ -179,7 +197,17 @@ def dashboard(request):
         'female_users': female_users,
         'male_users_data': male_users_data,
         'female_users_data': female_users_data,
-        # Add more context data if needed
+        'below_18_count': below_18_count,
+        'below_18_percentage': below_18_percentage,
+        'age_18_35_count': age_18_35_count,
+        'age_18_35_percentage': age_18_35_percentage,
+        'age_36_45_count': age_36_45_count,
+        'age_36_45_percentage': age_36_45_percentage,
+        'age_46_65_count': age_46_65_count,
+        'age_46_65_percentage': age_46_65_percentage,
+        'above_65_count': above_65_count,
+        'above_65_percentage': above_65_percentage,
     }
+    
     
     return render(request, 'dashboard.html', context)

@@ -96,13 +96,56 @@
                         <canvas id="genderChart"></canvas>
                     </div>
                 </div>
+                 <div class="col-lg-4">
+                                <div class="card-body">
+    <div class="progress-box progress-1">
+        <h4 class="por-title">Below 18 yrs</h4>
+        <div class="por-txt">{{ below_18_count }} Users ({{ below_18_percentage|default_if_none:"0"|floatformat:"0" }}%)</div>
+        <div class="progress mb-2" style="height: 5px;">
+            <div class="progress-bar bg-flat-color-1" role="progressbar" style="width: {{ below_18_percentage|default_if_none:"0"|floatformat:"0" }}%;" aria-valuenow="{{ below_18_percentage|floatformat:"0" }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    </div>
+
+    <div class="progress-box progress-2">
+        <h4 class="por-title">18-35 years</h4>
+        <div class="por-txt">{{ age_18_35_count }} Users ({{ age_18_35_percentage|default_if_none:"0"|floatformat:"0" }}%)</div>
+        <div class="progress mb-2" style="height: 5px;">
+            <div class="progress-bar bg-flat-color-2" role="progressbar" style="width: {{ age_18_35_percentage|default_if_none:"0"|floatformat:"0" }}%;" aria-valuenow="{{ age_18_35_percentage|floatformat:"0" }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    </div>
+
+    <div class="progress-box progress-3">
+        <h4 class="por-title">36-45 years</h4>
+        <div class="por-txt">{{ age_36_45_count }} Users ({{ age_36_45_percentage|default_if_none:"0"|floatformat:"0" }}%)</div>
+        <div class="progress mb-2" style="height: 5px;">
+            <div class="progress-bar bg-flat-color-3" role="progressbar" style="width: {{ age_36_45_percentage|default_if_none:"0"|floatformat:"0" }}%;" aria-valuenow="{{ age_36_45_percentage|floatformat:"0" }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    </div>
+
+    <div class="progress-box progress-4">
+        <h4 class="por-title">46-65 years</h4>
+        <div class="por-txt">{{ age_46_65_count }} Users ({{ age_46_65_percentage|default_if_none:"0"|floatformat:"0" }}%)</div>
+        <div class="progress mb-2" style="height: 5px;">
+            <div class="progress-bar bg-flat-color-4" role="progressbar" style="width: {{ age_46_65_percentage|default_if_none:"0"|floatformat:"0" }}%;" aria-valuenow="{{ age_46_65_percentage|floatformat:"0" }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    </div>
+
+    <div class="progress-box progress-5">
+        <h4 class="por-title">66+ years</h4>
+        <div class="por-txt">{{ above_65_count }} Users ({{ above_65_percentage|default_if_none:"0"|floatformat:"0" }}%)</div>
+        <div class="progress mb-2" style="height: 5px;">
+            <div class="progress-bar bg-flat-color-5" role="progressbar" style="width: {{ above_65_percentage|default_if_none:"0"|floatformat:"0" }}%;" aria-valuenow="{{ above_65_percentage|floatformat:"0" }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    </div>
+</div>
             </div> <!-- /.row -->
-            <div class="card-body"></div>
+            <div class="card-body">
+            </div>
         </div>
     </div><!-- /# column -->
 </div>
 <!--  /Traffic -->
-<!-- Bar chart for monthly user distribution -->
+{% comment %} <!-- Bar chart for monthly user distribution -->
 <div class="col-lg-6">
     <div class="card">
         <div class="card-body">
@@ -110,7 +153,7 @@
             <canvas id="barChart"></canvas>
         </div>
     </div>
-</div><!-- /# column -->
+</div><!-- /# column --> {% endcomment %}
 
 </div>
 

@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-wf=k@!3+=lhp3&0&55bnv$ldid$0scm1g!525quu=nw=484=ec
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    'adbe-197-248-229-71.ngrok-free.app',
+    '1d6b-197-248-229-71.ngrok-free.app',
     '127.0.0.1'
 ]
 
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'ussd_app',
+   
 ]
 
 MIDDLEWARE = [
