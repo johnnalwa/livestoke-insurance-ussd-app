@@ -28,7 +28,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     '1d6b-197-248-229-71.ngrok-free.app',
-    '127.0.0.1'
+    'livestoke-insurance-ussd-app-1.onrender.com'
 ]
 
 
@@ -140,5 +140,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_CREDENTIALS = False
 CORS_ALLOW_HEADERS = ["*"]
 # CSRF_TRUSTED_ORIGINS
-CORS_ORIGIN_WHITELIST=['https://2efe-102-215-12-244.ngrok-free.app','http://127.0.0.1:3000','http://127.0.0.1','http://164.92.88.33','http://164.92.88.33']
-CSRF_TRUSTED_ORIGINS=['https://2efe-102-215-12-244.ngrok-free.app','http://127.0.0.1:3000','http://127.0.0.1','http://164.92.88.33','http://164.92.88.33']
+CORS_ORIGIN_WHITELIST=['https://2efe-102-215-12-244.ngrok-free.app','http://127.0.0.1:3000','http://livestoke-insurance-ussd-app-1.onrender.com','http://164.92.88.33','http://164.92.88.33']
+CSRF_TRUSTED_ORIGINS=['https://2efe-102-215-12-244.ngrok-free.app','http://127.0.0.1:3000','http://livestoke-insurance-ussd-app-1.onrender.com','http://164.92.88.33','http://164.92.88.33']
